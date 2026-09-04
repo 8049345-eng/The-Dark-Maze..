@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Dark Maze - Nightmare Depths</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#010101;color:#eee;font-family:"Courier New",monospace}
+#game-container{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+canvas{
+ filter:contrast(1.08) saturate(.9);
+display:block;background:#000}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(1,1,1,.96);z-index:30;text-align:center}
+.hidden{display:none!important}
+h1{font-size:clamp(2.4rem,7vw,5rem);margin-bottom:1rem;color:#790000;text-shadow:0 0 20px #f00000;letter-spacing:5px}
+h2{color:#c00;letter-spacing:3px;margin-bottom:.8rem}
+p{font-size:1rem;margin-bottom:1.2rem;color:#999;max-width:720px;line-height:1.6;padding:0 20px}
+.btn{padding:14px 28px;font:700 1rem "Courier New";letter-spacing:2px;text-transform:uppercase;background:#100000;border:2px solid #640000;color:#e00000;cursor:pointer}
+.btn:hover{background:#450000;color:#fff;border-color:#f00}
+#hud{position:absolute;left:18px;top:15px;z-index:10;pointer-events:none;width:min(310px,42vw);padding:14px 16px;background:linear-gradient(135deg,rgba(5,5,5,.88),rgba(20,0,0,.66));border:1px solid rgba(160,0,0,.42);border-left:3px solid #9b0000;box-shadow:0 8px 28px rgba(0,0,0,.45),inset 0 0 24px rgba(130,0,0,.08);backdrop-filter:blur(3px);display:flex;flex-direction:column;gap:6px;text-shadow:2px 2px 5px #000}
+.hud-line{font-weight:700;color:#ddd;letter-spacing:1px}
+.hud-accent{color:#ff4545;text-shadow:0 0 9px rgba(255,0,0,.55)}
+.bar{width:100%;height:9px;border:1px solid #650000;background:#120000;overflow:hidden;border-radius:2px}
+.fill{height:100%;width:100%;transition:width .1s linear}
+#health-fill{background:#c40000} #stamina-fill{background:#b8b8b8} #battery-fill{background:#777}
+#objective{font-size:.78rem;color:#bbb;max-width:360px;line-height:1.45;padding-top:4px}
+#controls{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:10;color:#aaa;font-size:.7rem;pointer-events:none;text-align:center;background:rgba(0,0,0,.55);border:1px solid rgba(150,0,0,.25);padding:8px 13px;letter-spacing:.7px;box-shadow:0 5px 18px rgba(0,0,0,.35)}
+#controls::first-letter{color:#f44}
+#message{position:absolute;top:16%;left:50%;transform:translateX(-50%);z-index:15;color:#ff6b6b;font-weight:bold;font-size:clamp(.9rem,2vw,1.15rem);text-shadow:0 0 12px #f00;opacity:0;transition:opacity .2s;text-align:center;pointer-events:none;background:rgba(0,0,0,.62);border:1px solid rgba(190,0,0,.38);padding:9px 15px;max-width:80vw;letter-spacing:1px}
+#elevator-panel{position:absolute;right:18px;top:15px;z-index:10;text-align:right;pointer-events:none}
+#damage-flash{position:absolute;inset:0;background:#f00;opacity:0;z-index:12;pointer-events:none}
+#boss-bar-wrap{position:absolute;top:15px;left:50%;transform:translateX(-50%);width:min(500px,60vw);z-index:11;display:none;text-align:center}
+#boss-bar-wrap .label{color:#e00;font-weight:bold;margin-bottom:4px;text-shadow:0 0 8px #f00}
+#boss-bar{height:14px;border:1px solid #a00;background:#1a0000}
+#boss-fill{height:100%;width:100%;background:#e00}
+#jumpscare{position:absolute;inset:0;background:#000;z-index:50;display:none;align-items:center;justify-content:center}
+#jumpscare-face{font-family:Arial,sans-serif;font-size:min(38vw,32rem);font-weight:900;color:#fff;text-shadow:0 0 20px #f00,0 0 70px #f00;animation:terror .07s infinite alternate}
+@keyframes terror{from{transform:scale(.8) rotate(-2deg);filter:contrast(2)}to{transform:scale(1.25) rotate(2deg);filter:invert(1) contrast(5)}}
+#level-card{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.88)}
+.card{border:1px solid #550000;background:#080808;padding:30px;max-width:620px;box-shadow:0 0 40px rgba(160,0,0,.25)}
+.card .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0;color:#aaa}
+.item-list{margin-top:8px;color:#999;font-size:.8rem}
+.item-list b{color:#ddd}
+#main-menu{background:radial-gradient(circle at 50% 45%,rgba(80,0,0,.13),rgba(1,1,1,.97) 58%),rgba(1,1,1,.96)}
+#main-menu p{color:#aaa;max-width:680px}
+#main-menu small{color:#666;margin-top:14px;letter-spacing:1px}
+.menu-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{min-width:180px;border-radius:2px;box-shadow:0 8px 22px rgba(0,0,0,.35);transition:transform .12s,background .12s,border-color .12s}
+.btn:active{transform:translateY(1px)}
+#settings-menu{gap:12px}
+.settings-box{width:min(620px,90vw);border:1px solid #420000;background:#070707;padding:24px;text-align:left}
+.setting{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0;border-bottom:1px solid #1d1d1d;color:#bbb}
+.setting:last-child{border-bottom:0}
+.setting b{color:#eee;display:block;margin-bottom:3px}
+.setting span{font-size:.78rem;color:#666}
+.toggle{min-width:92px;padding:9px 12px;font:700 .8rem "Courier New";letter-spacing:1px;background:#120000;border:1px solid #650000;color:#e00000;cursor:pointer}
+.toggle.on{background:#350000;color:#fff;border-color:#d00000}
+#vhs-overlay{position:absolute;inset:0;z-index:18;pointer-events:none;overflow:hidden;opacity:0}
+#vhs-overlay::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.035) 0,rgba(255,255,255,.035) 1px,transparent 1px,transparent 4px);mix-blend-mode:screen}
+#vhs-overlay::after{content:"";position:absolute;inset:-20%;background:repeating-linear-gradient(90deg,rgba(255,0,0,.018) 0 2px,rgba(0,255,255,.018) 2px 4px,transparent 4px 9px);animation:vhs-jitter .11s infinite steps(2);opacity:.8}
+#vhs-overlay .vhs-text{position:absolute;left:18px;bottom:18px;color:rgba(255,255,255,.42);font:700 12px "Courier New";letter-spacing:2px;text-shadow:2px 0 #f00,-2px 0 #0ff}
+#vhs-overlay .rec{position:absolute;right:18px;top:18px;color:rgba(255,80,80,.65);font:700 12px "Courier New";letter-spacing:2px}
+.vhs-enabled #vhs-overlay{opacity:1}
+.vhs-enabled canvas{
+ filter:contrast(1.08) saturate(.9);
+filter:contrast(1.08) saturate(.72)}
+@keyframes vhs-jitter{0%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,0)}75%{transform:translate(0,-1px)}100%{transform:translate(-1px,0)}}
+
+#ghost-dialogue{background:radial-gradient(circle at 50% 50%,rgba(45,45,45,.08),rgba(0,0,0,.97) 68%);z-index:55}
+.ghost-window{width:min(720px,90vw);padding:0 24px 24px;background:linear-gradient(145deg,rgba(12,12,12,.97),rgba(3,3,3,.98));border:1px solid #3a3a3a;box-shadow:0 0 55px rgba(210,210,210,.08),0 20px 70px rgba(0,0,0,.75);text-align:left;position:relative;overflow:hidden}
+.ghost-window::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,.018) 4px);opacity:.6}
+.ghost-header{display:flex;justify-content:space-between;gap:20px;padding:11px 0;border-bottom:1px solid #292929;color:#777;font-size:.68rem;letter-spacing:2px}
+#ghost-status{color:#8f8f8f}
+.ghost-portrait{width:92px;height:92px;margin:22px auto 12px;border:1px solid #555;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#333,#090909 62%);box-shadow:0 0 30px rgba(255,255,255,.06);position:relative}
+.ghost-symbol{font-size:42px;color:#ddd;text-shadow:0 0 15px #fff}
+.ghost-glitch{position:absolute;inset:18px 7px;background:repeating-linear-gradient(to bottom,transparent 0 7px,rgba(255,255,255,.13) 8px 10px);mix-blend-mode:screen;animation:ghost-glitch .14s infinite steps(2)}
+@keyframes ghost-glitch{0%{transform:translateX(-3px)}50%{transform:translateX(4px)}100%{transform:translateX(-1px)}}
+.ghost-speaker{text-align:center;color:#ddd;font-weight:bold;letter-spacing:4px;font-size:.8rem}
+.ghost-text{min-height:86px;margin:18px 0 12px;padding:17px 18px;border-left:2px solid #999;background:rgba(255,255,255,.025);color:#ddd;font-size:clamp(.92rem,2vw,1.05rem);line-height:1.75;letter-spacing:.3px}
+.ghost-tip{text-align:center;color:#777;font-size:.7rem;letter-spacing:1.5px;margin-bottom:17px}
+#ghost-continue{display:block;margin:0 auto;min-width:150px;border-color:#666;color:#ddd;background:#111}
+#ghost-continue:hover{background:#262626;border-color:#aaa}
+
+#game-over{
+  z-index:60!important;
+  background:radial-gradient(circle at center,rgba(45,0,0,.82),rgba(0,0,0,.97) 72%)!important;
+}
+#game-over h1{margin-bottom:14px}
+#death-reason{
+  max-width:700px!important;
+  font-size:clamp(.95rem,2vw,1.15rem)!important;
+  line-height:1.75!important;
+  color:#ddd!important;
+  background:rgba(0,0,0,.72);
+  border:1px solid rgba(170,0,0,.45);
+  padding:24px 30px!important;
+  box-shadow:0 0 45px rgba(120,0,0,.2);
+}
+#death-reason strong{color:#ff4b4b;font-size:1.25em;letter-spacing:2px}
+#death-reason span{color:#ff7777;font-size:.72em;letter-spacing:3px;font-weight:bold}
+#death-reason small{color:#666;letter-spacing:3px}
+
+#item-hud{position:fixed;top:18px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:20;pointer-events:none}
+.item-chip{background:rgba(5,7,10,.58);border:1px solid rgba(255,255,255,.13);padding:6px 10px;border-radius:5px;font-size:13px;backdrop-filter:blur(4px)}
+#item-message{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:25;pointer-events:none;font-size:14px;letter-spacing:2px;text-shadow:0 2px 8px #000;opacity:0;transition:opacity .15s}
+#item-message.show{opacity:1}
+#controls{opacity:.45}
+</style>
+</head>
+<body>
+<div id="game-container">
+<canvas id="gameCanvas"></canvas>
+
+<div id="vhs-overlay"><div class="rec">● REC</div><div class="vhs-text">PLAY  SP • THE DARK MAZE • CH-03</div></div>
+
+<div id="hud" class="hidden">
+  <div class="hud-line hud-accent" id="level-text">DEPTH 1</div>
+  <div class="hud-line" id="status-text">HEALTH 100</div>
+  <div class="bar"><div class="fill" id="health-fill"></div></div>
+  <div class="hud-line">STAMINA</div>
+  <div class="bar"><div class="fill" id="stamina-fill"></div></div>
+  <div class="hud-line">FLASHLIGHT</div>
+  <div class="bar"><div class="fill" id="battery-fill"></div></div>
+  <div id="objective">Find the elevator.</div>
+  <div class="item-list" id="inventory">ITEMS: none</div>
+</div>
+
+<div id="elevator-panel" class="hidden">
+  <div class="hud-line hud-accent" id="elevator-status">ELEVATOR: LOCKED</div>
+  <div class="hud-line" id="sigil-status"></div>
+</div>
+
+
+<div id="item-hud">
+  <div class="item-chip">🔑 <b id="keys-count">0</b></div>
+  <div class="item-chip">🔫 <b id="stun-count">0</b></div>
+  <div class="item-chip">🔥 <b id="lighter-count">0</b></div>
+  <div class="item-chip">🧿 <b id="secret-count">0</b></div>
+</div>
+<div id="controls" class="hidden">WASD / ARROWS: MOVE • SHIFT: SPRINT • E: USE / PICK UP • F: FLASHLIGHT • SPACE: BOSS STUN</div>
+<div id="item-message"></div><div id="message"></div>
+<div id="damage-flash"></div>
+
+<div id="boss-bar-wrap">
+  <div class="label" id="boss-name">BOSS</div>
+  <div id="boss-bar"><div id="boss-fill"></div></div>
+</div>
+
+<div id="jumpscare"><div id="jumpscare-face">☠</div></div>
+
+<div id="main-menu" class="screen">
+  <h1>THE DARK MAZE</h1>
+  <p>The maze remembers your deaths. Every time you die, the walls are rebuilt. Descend through an endless nightmare, gather supplies, unlock the elevator, and survive the things waiting below.</p>
+  <div class="menu-actions">
+    <button class="btn" id="start-btn">Enter the Depths</button>
+    <button class="btn" id="settings-btn">Settings</button>
+  </div>
+  <small>Randomized floors • monster variants • items • elevators • boss fights</small>
+</div>
+
+<div id="settings-menu" class="screen hidden">
+  <h2>GAME SETTINGS</h2>
+  <p>Customize how much of the nightmare you want on screen.</p>
+  <div class="settings-box">
+    <div class="setting">
+      <div><b>VHS Vibe</b><span>Scanlines, tape jitter, chromatic distortion.</span></div>
+      <button class="toggle on" id="vhs-toggle">ON</button>
+    </div>
+    <div class="setting">
+      <div><b>Jump Scares</b><span>Show the death-screen scare animation.</span></div>
+      <button class="toggle on" id="scare-toggle">ON</button>
+    </div>
+    <div class="setting">
+      <div><b>Monster Aggression</b><span>Normal gives monsters their full special behavior.</span></div>
+      <button class="toggle on" id="aggression-toggle">NORMAL</button>
+    </div>
+    <div class="setting">
+      <div><b>Flashlight Starts On</b><span>Choose whether each new floor begins with the flashlight on.</span></div>
+      <button class="toggle on" id="flash-start-toggle">ON</button>
+    </div>
+  </div>
+  <button class="btn" id="settings-back">Back</button>
+</div>
+
+
+<div id="game-over" class="screen hidden">
+  <h1>YOU DIED</h1>
+  <p id="death-reason">Something found you.</p>
+  <button class="btn" id="retry-btn">Rebuild The Maze</button>
+</div>
+
+<div id="level-card" class="hidden">
+  <div class="card">
+    <h2 id="card-title">DEPTH 1</h2>
+    <p id="card-copy">The walls have shifted.</p>
+    <div class="stats">
+      <div>MONSTERS: <b id="card-monsters">0</b></div>
+      <div>ITEMS: <b id="card-items">0</b></div>
+      <div>FLOOR SIZE: <b id="card-size">0</b></div>
+      <div>BOSS: <b id="card-boss">NO</b></div>
+    </div>
+    <button class="btn" id="continue-btn">Descend</button>
+  </div>
+</div>
+</div>
+
+<script>
+const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d");
+const mainMenu=document.getElementById("main-menu"),gameOver=document.getElementById("game-over"),settingsMenu=document.getElementById("settings-menu");
+const levelCard=document.getElementById("level-card"),hud=document.getElementById("hud"),controls=document.getElementById("controls");
+const levelText=document.getElementById("level-text"),statusText=document.getElementById("status-text");
+const healthFill=document.getElementById("health-fill"),staminaFill=document.getElementById("stamina-fill"),batteryFill=document.getElementById("battery-fill");
+const objective=document.getElementById("objective"),inventoryEl=document.getElementById("inventory");
+const elevatorPanel=document.getElementById("elevator-panel"),elevatorStatus=document.getElementById("elevator-status"),sigilStatus=document.getElementById("sigil-status");
+const bossWrap=document.getElementById("boss-bar-wrap"),bossName=document.getElementById("boss-name"),bossFill=document.getElementById("boss-fill");
+const messageEl=document.getElementById("message"),damageFlash=document.getElementById("damage-flash"),jumpscare=document.getElementById("jumpscare");
+const deathReason=document.getElementById("death-reason");
+const keys={w:false,s:false,a:false,d:false,ArrowUp:false,ArrowDown:false,ArrowLeft:false,ArrowRight:false,Shift:false,Space:false};
+let audioCtx=null,gameRunning=false,level=1,deathCount=0,MAP_SIZE=25,map=[],monsters=[],items=[],exit=null,boss=null,depthBuffer=[];
+let spawnPoint={x:1.5,y:1.5,angle:0};
+let player={x:1.5,y:1.5,angle:0,pitch:0,health:100,stamina:100,battery:100,flashlight:true,lighter:0,keys:0,medkits:0,batteries:0,adrenaline:0,adrenalineBoost:0,sigils:0};
+let lastTime=0,msgTimer=0,screenShake=0;
+const settings={vhs:true,jumpscares:true,aggression:true,flashlightStart:true};
+
+const extraItems={keys:0,stuns:0,lighters:0,secrets:0};
+const discoveredSecrets=new Set();
+let floorRule="";
+let floorMonster="";
+let floorKeyCount=1;
+let itemMessageTimer=0;
+
+function itemMsg(text){
+ const el=document.getElementById("item-message");
+ if(!el)return;
+ el.textContent=text; el.classList.add("show");
+ clearTimeout(itemMessageTimer);
+ itemMessageTimer=setTimeout(()=>el.classList.remove("show"),1800);
+}
+function updateItemHUD(){
+ const k=document.getElementById("keys-count"),s=document.getElementById("stun-count"),l=document.getElementById("lighter-count"),q=document.getElementById("secret-count");
+ if(k)k.textContent=extraItems.keys;
+ if(s)s.textContent=extraItems.stuns;
+ if(l)l.textContent=extraItems.lighters;
+ if(q)q.textContent=extraItems.secrets;
+}
+
+
+const RENDER_W = 640;
+const RENDER_H = 360;
+
+function resize(){
+ canvas.width = RENDER_W;
+ canvas.height = RENDER_H;
+ const scale=Math.min(innerWidth/RENDER_W,innerHeight/RENDER_H);
+ canvas.style.width=(RENDER_W*scale)+"px";
+ canvas.style.height=(RENDER_H*scale)+"px";
+}
+addEventListener("resize",resize);
+resize();
+
+function audioInit(){
+ if(audioCtx)return;
+ audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+ const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+ osc.type="sawtooth";osc.frequency.value=30;gain.gain.value=.16;osc.connect(gain);gain.connect(audioCtx.destination);osc.start();
+}
+function tone(freq,dur,type="sine",vol=.08){
+ if(!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+ o.type=type;o.frequency.setValueAtTime(freq,audioCtx.currentTime);g.gain.setValueAtTime(vol,audioCtx.currentTime);
+ g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+dur);
+}
+function noise(dur=1,vol=.35){
+ if(!audioCtx)return; const b=audioCtx.createBuffer(1,audioCtx.sampleRate*dur,audioCtx.sampleRate),d=b.getChannelData(0);
+ for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ const n=audioCtx.createBufferSource(),g=audioCtx.createGain(),f=audioCtx.createBiquadFilter();
+ n.buffer=b;f.type="lowpass";f.frequency.value=350;g.gain.value=vol;n.connect(f);f.connect(g);g.connect(audioCtx.destination);n.start();
+}
+function showMessage(t,ms=1400){messageEl.textContent=t;messageEl.style.opacity=1;clearTimeout(msgTimer);msgTimer=setTimeout(()=>messageEl.style.opacity=0,ms)}
+function applySettings(){
+ document.body.classList.toggle("vhs-enabled",settings.vhs);
+ const vt=document.getElementById("vhs-toggle"),st=document.getElementById("scare-toggle"),at=document.getElementById("aggression-toggle"),ft=document.getElementById("flash-start-toggle");
+ vt.textContent=settings.vhs?"ON":"OFF";vt.classList.toggle("on",settings.vhs);
+ st.textContent=settings.jumpscares?"ON":"OFF";st.classList.toggle("on",settings.jumpscares);
+ at.textContent=settings.aggression?"NORMAL":"CALM";at.classList.toggle("on",settings.aggression);
+ ft.textContent=settings.flashlightStart?"ON":"OFF";ft.classList.toggle("on",settings.flashlightStart);
+}
+applySettings();
+
+function rand(a,b){return a+Math.random()*(b-a)}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function generateMaze(){
+ const size=MAP_SIZE, mz=Array.from({length:size},()=>Array(size).fill(1));
+ const stack=[{x:1,y:1}];mz[1][1]=0;
+ while(stack.length){
+  const c=stack[stack.length-1],ns=[];
+  for(const d of [{x:0,y:-2},{x:0,y:2},{x:-2,y:0},{x:2,y:0}]){
+   const x=c.x+d.x,y=c.y+d.y;
+   if(x>0&&x<size-1&&y>0&&y<size-1&&mz[y][x]===1)ns.push({x,y,wx:c.x+d.x/2,wy:c.y+d.y/2})
+  }
+  if(ns.length){const n=ns[Math.floor(Math.random()*ns.length)];mz[n.wy][n.wx]=0;mz[n.y][n.x]=0;stack.push({x:n.x,y:n.y})}
+  else stack.pop();
+ }
+ // Add a few loops so higher floors are less predictable.
+ const loops=Math.min(18,3+level*2);
+ for(let i=0;i<loops;i++){
+  const x=2+Math.floor(Math.random()*(size-4)),y=2+Math.floor(Math.random()*(size-4));
+  if(mz[y][x]===1 && ((mz[y-1][x]===0&&mz[y+1][x]===0)||(mz[y][x-1]===0&&mz[y][x+1]===0)))mz[y][x]=0;
+ }
+ return mz;
+}
+function openCell(x,y){return x>=0&&y>=0&&x<MAP_SIZE&&y<MAP_SIZE&&map[y][x]===0}
+function farOpen(minDist=7){
+ let best=null,bd=0;
+ for(let tries=0;tries<300;tries++){
+  const x=Math.floor(rand(1,MAP_SIZE-1)),y=Math.floor(rand(1,MAP_SIZE-1));
+  if(!openCell(x,y))continue;
+  const d=Math.hypot(x+.5-player.x,y+.5-player.y);
+  if(d>bd&&d>minDist){best={x:x+.5,y:y+.5};bd=d}
+ }
+ return best||{x:MAP_SIZE-2.5,y:MAP_SIZE-2.5};
+}
+function createLevel(){
+ MAP_SIZE=Math.min(35,25+Math.floor((level-1)/2)*2);
+ map=generateMaze();monsters=[];items=[];boss=null;
+// Guarantee the spawn cell and its immediate approach are open.
+map[1][1]=0;
+map[1][2]=0;
+map[2][1]=0;
+ // Spawn at a known-open cell with a little breathing room from the walls.
+spawnPoint={x:1.5,y:1.5,angle:0};
+player.x=spawnPoint.x;player.y=spawnPoint.y;player.angle=spawnPoint.angle;player.pitch=0;
+player.health=100;player.stamina=100;player.battery=100;player.flashlight=settings.flashlightStart;player.keys=0;player.sigils=0;
+ exit=farOpen(10);
+ const monsterCount=Math.min(16,5+level+Math.floor(level/2));
+ const types=["stalker","crawler","lurker"];
+ for(let i=0;i<monsterCount;i++){
+  const p=farOpen(5);
+  const type=types[Math.floor(Math.random()*types.length)];
+  const mult=1+level*.045;
+  monsters.push({
+   x:p.x,y:p.y,type,
+   speed:(type==="crawler"?.032:.021)*mult,
+   chaseSpeed:(type==="stalker"?.052:type==="crawler"?.043:.037)*mult,
+   isChasing:false,angle:rand(0,Math.PI*2),wander:rand(30,150),phase:rand(0,10),
+   damage:type==="crawler"?18:type==="lurker"?15:12,
+   specialTimer:rand(2,6),hidden:false,charge:0
+  });
+ }
+ // Useful loot gets denser on deeper floors.
+ const itemCount=Math.min(24,7+level*2);
+ const kinds=["key","medkit","battery","adrenaline","sigil"];
+ for(let i=0;i<itemCount;i++){
+  const p=farOpen(3),roll=Math.random();
+  let kind;
+  if(i===0)kind="key";
+  else if(level%3===0&&i<4)kind="sigil";
+  else if(roll<.28)kind="battery";
+  else if(roll<.55)kind="medkit";
+  else if(roll<.78)kind="adrenaline";
+  else kind="key";
+  items.push({x:p.x,y:p.y,kind,spin:rand(0,6)});
+ }
+ if(level%3===0){
+  const p=farOpen(11);
+  boss={x:p.x,y:p.y,type:level%6===0?"THE WARDEN":"THE BUTCHER",health:100+level*12,maxHealth:100+level*12,phase:0,active:false,speed:.028+level*.001,attackTimer:0};
+  bossWrap.style.display="block";bossName.textContent=boss.type;
+ }else bossWrap.style.display="none";
+ updateHUD();
+}
+
+function randomOpenSpot(){
+ for(let i=0;i<400;i++){
+   const x=1+Math.floor(Math.random()*(map[0].length-2));
+   const y=1+Math.floor(Math.random()*(map.length-2));
+   if(map[y][x]===0 && Math.hypot(x+.5-player.x,y+.5-player.y)>3) return {x:x+.5,y:y+.5};
+ }
+ return {x:map[0].length-2.5,y:map.length-2.5};
+}
+function spawnFloorItems(){
+ items=[];
+ const add=(type)=>{
+   const p=randomOpenSpot();
+   items.push({x:p.x,y:p.y,type,active:true,bob:Math.random()*6.28});
+ };
+ for(let i=0;i<floorKeyCount;i++)add("key");
+ add("stun");
+ add("lighter");
+ if(Math.random()<.75)add("lighter");
+ if(Math.random()<.45)add("stun");
+ if(Math.random()<.35)add("secret");
+ if(Math.random()<.22)add("secret");
+}
+function collectItems(){
+ for(const it of items||[]){
+   if(!it.active)continue;
+   if(Math.hypot(player.x-it.x,player.y-it.y)<.48){
+     it.active=false;
+     if(it.type==="key"){extraItems.keys++;itemMsg("ELEVATOR KEY FOUND");}
+     if(it.type==="stun"){extraItems.stuns++;itemMsg("STUN DEVICE FOUND — SPACE TO STUN");}
+     if(it.type==="lighter"){extraItems.lighters++;itemMsg("LIGHTER FOUND — PRESS L");}
+     if(it.type==="secret"){
+       extraItems.secrets++;
+       discoveredSecrets.add(level);
+       itemMsg("SECRET FOUND");
+     }
+     updateItemHUD();
+   }
+ }
+}
+function useStun(){
+ if(extraItems.stuns<=0){itemMsg("NO STUN CHARGES");return;}
+ let target=null,dist=99;
+ for(const m of monsters){
+  if(m.stunned>0){m.stunned-=dt;continue;}
+  if(m.type==="SHADE" && m.hidden){
+    if(Math.random()<dt*.35 && Math.hypot(m.x-player.x,m.y-player.y)<4)m.hidden=false;
+  }
+  if(m.type==="HOWLER" && m.special<=0){
+    if(Math.hypot(m.x-player.x,m.y-player.y)<9){itemMsg("A HOWL ECHOES THROUGH THE MAZE"); player.stamina=Math.max(0,player.stamina-10);}
+    m.special=4+Math.random()*3;
+  }
+  if(m.type==="HOWLER")m.special-=dt;
+  if(m.type==="MIMIC" && m.special>0){
+    m.special-=dt;
+  }
+
+   const d=Math.hypot(m.x-player.x,m.y-player.y);
+   if(d<dist && d<5){dist=d;target=m;}
+ }
+ if(!target){itemMsg("NO MONSTER IN RANGE");return;}
+ extraItems.stuns--;
+ target.stunned=2.5;
+ target.charge=0;
+ itemMsg("MONSTER STUNNED");
+ updateItemHUD();
+ noise(.15,.15);
+}
+function useLighter(){
+ if(extraItems.lighters<=0){itemMsg("NO LIGHTERS");return;}
+ extraItems.lighters--;
+ player.lighter=player.lighter>0?0:7;
+ itemMsg(player.lighter?"LIGHTER LIT":"LIGHTER OFF");
+ updateItemHUD();
+}
+
+function startLevel(){
+ floorKeyCount=1;
+ if(level>1 && Math.random()<.58) floorKeyCount=2;
+ if(level>3 && Math.random()<.30) floorKeyCount=3;
+ const monsterPool=["STALKER","CRAWLER","LURKER","SHADE","HOWLER","MIMIC"];
+ floorMonster=monsterPool[Math.floor(Math.random()*monsterPool.length)];
+ floorRule=level%2===0?"FIND THE KEYS — THE ELEVATOR NEEDS MORE THAN ONE.":"SEARCH THE FLOOR — SOMETHING NEW IS HUNTING YOU.";
+
+ levelCard.classList.add("hidden");hud.classList.remove("hidden");controls.classList.remove("hidden");elevatorPanel.classList.remove("hidden");
+ createLevel();gameRunning=true;lastTime=performance.now();tone(55,1.5,"sawtooth",.18);
+}
+function updateHUD(){
+ levelText.textContent="DEPTH "+level+(level%3===0?" • BOSS FLOOR":"");
+ statusText.textContent="HEALTH "+Math.ceil(player.health);
+ healthFill.style.width=Math.max(0,player.health)+"%";
+ staminaFill.style.width=player.stamina+"%";batteryFill.style.width=player.battery+"%";
+ inventoryEl.textContent=`ITEMS: ${player.keys} KEY${player.keys===1?"":"S"} • ${player.medkits} MEDKIT${player.medkits===1?"":"S"} • ${player.batteries} BATTERY${player.batteries===1?"":"IES"} • ${player.adrenaline} ADRENALINE • ${player.sigils} SIGILS`;
+ if(boss){
+  bossFill.style.width=Math.max(0,boss.health/boss.maxHealth*100)+"%";
+  sigilStatus.textContent=`BOSS SIGILS: ${player.sigils}/3`;
+ }
+ if(extraItems.keys<floorKeyCount) objective.textContent=`${level}F • FIND ${floorKeyCount-extraItems.keys} MORE KEY${floorKeyCount-extraItems.keys===1?"":"S"}`;
+ else if(level%3===0) objective.textContent=`${level}F • Reach the elevator with ${Math.max(0,3-player.sigils)} sigils.`;
+ else objective.textContent=`${level}F • ${floorRule}`;
+ elevatorStatus.textContent=player.keys?"ELEVATOR: UNLOCKED":"ELEVATOR: LOCKED";
+}
+function moveEntity(e,dx,dy){
+ const r=.20;
+ // Check X and Y independently so the player can slide smoothly along walls.
+ const canX =
+   openCell(Math.floor(e.x+dx+r),Math.floor(e.y)) &&
+   openCell(Math.floor(e.x+dx-r),Math.floor(e.y)) &&
+   openCell(Math.floor(e.x+dx),Math.floor(e.y+r)) &&
+   openCell(Math.floor(e.x+dx),Math.floor(e.y-r));
+ const canY =
+   openCell(Math.floor(e.x),Math.floor(e.y+dy+r)) &&
+   openCell(Math.floor(e.x),Math.floor(e.y+dy-r)) &&
+   openCell(Math.floor(e.x+r),Math.floor(e.y+dy)) &&
+   openCell(Math.floor(e.x-r),Math.floor(e.y+dy));
+ if(canX)e.x+=dx;
+ if(canY)e.y+=dy;
+}
+function hurt(amount,reason="The darkness tore into you."){
+ player.health=Math.max(0,player.health-amount);damageFlash.style.opacity=.28;setTimeout(()=>damageFlash.style.opacity=0,80);screenShake=8;tone(75,.18,"square",.18);
+ if(player.health<=0)die(reason);
+}
+function useItem(){
+ let picked=-1;
+ for(let i=0;i<items.length;i++)if(Math.hypot(player.x-items[i].x,player.y-items[i].y)<.65){picked=i;break}
+ if(picked>=0){
+  const it=items[picked];items.splice(picked,1);
+  if(it.kind==="key"){player.keys++;showMessage("KEY ACQUIRED");tone(520,.18)}
+  if(it.kind==="medkit"){player.medkits++;showMessage("MEDKIT — press Q to heal")}
+  if(it.kind==="battery"){player.batteries++;showMessage("BATTERY — press R to recharge")}
+  if(it.kind==="adrenaline"){player.adrenaline++;showMessage("ADRENALINE — press Z to inject")}
+  if(it.kind==="sigil"){player.sigils++;showMessage("BOSS SIGIL ACQUIRED");tone(180,.5,"triangle",.15)}
+  updateHUD();return;
+ }
+ if(exit && Math.hypot(player.x-exit.x,player.y-exit.y)<1.1){
+  if(!player.keys){showMessage("THE ELEVATOR NEEDS A KEY",1600);tone(70,.4);return}
+  if(level%3===0 && player.sigils<3){showMessage("THE BOSS STILL OWNS THIS FLOOR",1600);return}
+  nextLevel();return;
+ }
+ showMessage("NOTHING HERE");
+}
+function heal(){if(player.medkits>0&&player.health<100){player.medkits--;player.health=Math.min(100,player.health+38);showMessage("WOUNDS STAPLED");tone(300,.25);updateHUD()}}
+function recharge(){if(player.batteries>0){player.batteries--;player.battery=Math.min(100,player.battery+55);showMessage("FLASHLIGHT RECHARGED");tone(700,.15);updateHUD()}}
+function adrenaline(){if(player.adrenaline>0){player.adrenaline--;player.stamina=100;player.adrenalineBoost=5;showMessage("ADRENALINE RUSH");tone(120,.5,"sawtooth",.12)}}
+function flashlight(){
+ if(player.flashlight){player.flashlight=false;showMessage("FLASHLIGHT OFF");return}
+ if(player.battery>0){player.flashlight=true;showMessage("FLASHLIGHT ON");}
+ else showMessage("BATTERY DEAD");
+}
+
+function activateBoss(){
+ if(!boss||boss.active)return;
+ if(Math.hypot(player.x-boss.x,player.y-boss.y)<8){boss.active=true;showMessage("IT KNOWS YOU ARE HERE",1800);tone(40,1.2,"sawtooth",.3)}
+}
+function update(dt){
+ const moving=keys.w||keys.s||keys.a||keys.d;
+ const sprint=keys.Shift&&player.stamina>0&&moving;
+ player.isSprinting=sprint;
+
+ let speed=(sprint?.088:.046)*(dt*60);
+ if(player.adrenalineBoost>0){
+  speed*=1.45;
+  player.adrenalineBoost-=dt;
+ }
+
+ if(sprint)player.stamina=Math.max(0,player.stamina-dt*30);
+ else player.stamina=Math.min(100,player.stamina+dt*17);
+
+ /*
+  LOOK:
+  Left / Right = turn
+  Up / Down = look vertically
+ */
+ const turnSpeed=2.65*dt;
+ const lookSpeed=150*dt;
+
+ if(keys.ArrowLeft)player.angle-=turnSpeed;
+ if(keys.ArrowRight)player.angle+=turnSpeed;
+ if(keys.ArrowUp)player.pitch=Math.max(-75,player.pitch-lookSpeed);
+ if(keys.ArrowDown)player.pitch=Math.min(75,player.pitch+lookSpeed);
+
+ /*
+  WASD MOVEMENT:
+  W/S = forward/back
+  A/D = strafe
+ */
+ let dx=0,dy=0;
+
+ const fx=Math.cos(player.angle);
+ const fy=Math.sin(player.angle);
+ const rx=-Math.sin(player.angle);
+ const ry=Math.cos(player.angle);
+
+ if(keys.w){dx+=fx*speed;dy+=fy*speed}
+ if(keys.s){dx-=fx*speed;dy-=fy*speed}
+ if(keys.a){dx-=rx*speed;dy-=ry*speed}
+ if(keys.d){dx+=rx*speed;dy+=ry*speed}
+
+ moveEntity(player,dx,dy);
+
+ if(player.flashlight)player.battery=Math.max(0,player.battery-dt*(.9+level*.035));else player.battery=Math.min(100,player.battery+dt*.08);
+ for(const m of monsters){
+  const ex=player.x-m.x,ey=player.y-m.y,dist=Math.hypot(ex,ey);
+  m.phase+=dt;
+  m.specialTimer-=dt;
+
+  if(dist<.48){hurt(m.damage,m.type==="stalker"?"THE STALKER CAUGHT YOU.":m.type==="crawler"?"THE CRAWLER CLUNG TO YOUR LEGS.":"THE LURKER FOUND YOU.");return}
+
+  if(m.type==="stalker"){
+   // STALKER: becomes aggressive when the player keeps the light on and can charge.
+   const detect=settings.aggression?(player.flashlight?8.5:5.5):4.8;
+   if(dist<detect || (player.isSprinting&&dist<10))m.isChasing=true;
+   if(dist>detect+5)m.isChasing=false;
+   if(m.isChasing && settings.aggression && player.flashlight && m.charge<=0 && dist<5){
+    m.charge=.8;showMessage("THE STALKER IS CHARGING",900);tone(90,.22,"square",.09);
+   }
+   let factor=m.isChasing?m.chaseSpeed:m.speed;
+   if(m.charge>0){m.charge-=dt;factor*=2.2}
+   moveEntity(m,(ex/(dist||1))*factor*(dt*60),(ey/(dist||1))*factor*(dt*60));
+  }else if(m.type==="crawler"){
+   // CRAWLER: weak in the light, extremely fast in darkness, and prefers flanking.
+   const detect=settings.aggression?(player.flashlight?4.2:9.5):5.5;
+   if(dist<detect)m.isChasing=true;
+   if(dist>detect+4)m.isChasing=false;
+   const factor=(m.isChasing?(player.flashlight?.052:.085):m.speed)*(dt*60);
+   moveEntity(m,(ex/(dist||1))*factor,(ey/(dist||1))*factor);
+   if(player.flashlight && dist<5 && Math.random()<dt*.45){m.angle+=Math.PI*.7}
+  }else{
+   // LURKER: vanishes periodically and reappears behind the player.
+   const detect=settings.aggression?5.0:3.8;
+   if(dist<detect)m.isChasing=true;
+   if(m.specialTimer<=0 && settings.aggression){
+    if(!m.hidden){m.hidden=true;m.specialTimer=rand(1.5,3.2)}
+    else{
+     m.hidden=false;m.specialTimer=rand(3,7);
+     const back=player.angle+Math.PI+rand(-.8,.8);
+     const tx=player.x+Math.cos(back)*rand(3.5,6),ty=player.y+Math.sin(back)*rand(3.5,6);
+     const gx=Math.max(1.5,Math.min(MAP_SIZE-1.5,tx)),gy=Math.max(1.5,Math.min(MAP_SIZE-1.5,ty));
+     if(openCell(Math.floor(gx),Math.floor(gy))){m.x=gx;m.y=gy;showMessage("SOMETHING MOVED BEHIND YOU",1000);tone(55,.35,"sawtooth",.08)}
+    }
+   }
+   if(!m.hidden){
+    const factor=(m.isChasing?m.chaseSpeed:m.speed)*(dt*60);
+    moveEntity(m,(ex/(dist||1))*factor,(ey/(dist||1))*factor);
+   }
+  }
+ } 
+ if(boss){
+  activateBoss();
+  if(boss.active){
+   const dx=player.x-boss.x,dy=player.y-boss.y,dist=Math.hypot(dx,dy);
+   boss.phase+=dt;boss.attackTimer-=dt;
+   if(dist<.75){if(boss.attackTimer<=0){hurt(28,boss.type+" crushed you.");boss.attackTimer=1.0}}
+   else {const f=boss.speed*(dt*60)*(dist<4?1.3:1);moveEntity(boss,dx/dist*f,dy/dist*f)}
+   if(dist<7 && player.flashlight && player.battery>0 && Math.abs(Math.atan2(dy,dx)-player.angle)<.48){
+    boss.health=Math.max(0,boss.health-dt*(8+level));
+    if(Math.random()<.025)tone(120+Math.random()*100,.08,"square",.05);
+    if(boss.health<=0){boss=null;bossWrap.style.display="none";showMessage("THE BOSS IS DEAD. FIND THE ELEVATOR.",2200);tone(80,1.5,"sawtooth",.2)}
+   }
+  }
+ }
+ for(const it of items)it.spin+=dt*3;
+ updateHUD();
+ if(Math.random()<dt*.035)tone(rand(45,150),rand(.1,.35),"sine",.025);
+}
+function nextLevel(){
+ gameRunning=false;level++;
+ levelCard.classList.remove("hidden");document.getElementById("card-title").textContent="DEPTH "+level;
+ document.getElementById("card-copy").textContent="The elevator descends. The maze is rebuilt around you.";
+ document.getElementById("card-monsters").textContent=Math.min(16,5+level+Math.floor(level/2));
+ document.getElementById("card-items").textContent=Math.min(24,7+level*2);
+ document.getElementById("card-size").textContent=MAP_SIZE;
+ document.getElementById("card-boss").textContent=level%3===0?"YES":"NO";
+ tone(45,1.2,"sawtooth",.18);
+}
+
+function die(reason){
+ if(!gameRunning)return;
+ gameRunning=false;
+ deathCount++;
+ hud.classList.add("hidden");
+ controls.classList.add("hidden");
+ elevatorPanel.classList.add("hidden");
+ bossWrap.style.display="none";
+
+ const lower=String(reason||"").toLowerCase();
+ let cause="A creature in the maze caught you.";
+ let tip="Stay alert, manage your stamina and battery, and listen before entering a new corridor.";
+
+ if(lower.includes("stalker")){
+   cause="THE STALKER CAUGHT YOU.";
+   tip="When the Stalker charges, break line of sight and turn a corner. Do not keep running in a straight line.";
+ }else if(lower.includes("crawler")){
+   cause="THE CRAWLER CAUGHT YOU.";
+   tip="The Crawler becomes more dangerous in darkness. Keep your flashlight ready and keep moving.";
+ }else if(lower.includes("lurker")){
+   cause="THE LURKER CAUGHT YOU.";
+   tip="The Lurker can reposition behind you. Check your surroundings when the maze suddenly becomes quiet.";
+ }else if(lower.includes("boss")){
+   cause="THE BOSS DEFEATED YOU.";
+   tip="Save batteries for the fight. Use your flashlight and the SPACE flash burst when the boss is close enough.";
+ }
+
+ deathReason.innerHTML=
+   `<strong>${cause}</strong><br><br>`+
+   `<span>HOW TO AVOID IT</span><br>${tip}<br><br>`+
+   `<span>SURVIVAL TIP</span><br>`+
+   `Do not waste your stamina. Use items when you need them, watch your health, and remember that the maze changes after death.<br><br>`+
+   `<small>DEATH #${deathCount}</small>`;
+
+ const showDeathScreen=()=>{
+   jumpscare.style.display="none";
+   gameOver.classList.remove("hidden");
+   gameOver.style.display="flex";
+ };
+
+ if(settings.jumpscares){
+   jumpscare.style.display="flex";
+   noise(.7,.5);
+   setTimeout(showDeathScreen,900);
+ }else{
+   showDeathScreen();
+ }
+}
+function castWall(angle){
+ const rayX=Math.cos(angle),rayY=Math.sin(angle);
+ let mapX=Math.floor(player.x),mapY=Math.floor(player.y);
+
+ const deltaX=Math.abs(1/(rayX||0.000001));
+ const deltaY=Math.abs(1/(rayY||0.000001));
+
+ let stepX,stepY,sideX,sideY;
+
+ if(rayX<0){
+  stepX=-1;
+  sideX=(player.x-mapX)*deltaX;
+ }else{
+  stepX=1;
+  sideX=(mapX+1-player.x)*deltaX;
+ }
+
+ if(rayY<0){
+  stepY=-1;
+  sideY=(player.y-mapY)*deltaY;
+ }else{
+  stepY=1;
+  sideY=(mapY+1-player.y)*deltaY;
+ }
+
+ let side=0;
+ let distance=18;
+
+ for(let i=0;i<80;i++){
+  if(sideX<sideY){
+   sideX+=deltaX;
+   mapX+=stepX;
+   side=0;
+  }else{
+   sideY+=deltaY;
+   mapY+=stepY;
+   side=1;
+  }
+
+  if(mapX<0||mapY<0||mapX>=MAP_SIZE||mapY>=MAP_SIZE)break;
+
+  if(map[mapY][mapX]>0){
+   distance=side===0?sideX-deltaX:sideY-deltaY;
+   break;
+  }
+ }
+
+ return Math.max(.05,Math.min(18,distance));
+}
+function angleDiff(a,b){let d=a-b;while(d<-Math.PI)d+=Math.PI*2;while(d>Math.PI)d-=Math.PI*2;return d}
+function visible(dist,a){
+ if(!player.flashlight)return .025;
+ const ad=Math.abs(angleDiff(a,player.angle));
+ let cone=ad<.31?1:ad<.55?(.55-ad)/.24*.32:0;
+ return Math.max(.025,cone*(1-dist/14));
+}
+function drawSprite(x,y,size,light,color="#d00000",kind="monster"){
+ ctx.save();ctx.translate(x,y);
+ if(kind==="monster"){
+  const jitter=Math.sin(performance.now()/70+y)*size*.025;
+  const monsterType=color==="stalker"?"stalker":color==="crawler"?"crawler":color==="lurker"?"lurker":"boss";
+  ctx.fillStyle=`rgba(${monsterType==="boss"||monsterType==="stalker"?"255":"210"},0,0,${Math.min(1,light+.08)})`;
+  if(monsterType==="crawler"){
+   ctx.beginPath();ctx.ellipse(0,size*.16,size*.40,size*.16,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#050000";ctx.beginPath();ctx.arc(-size*.16,size*.08,size*.045,0,Math.PI*2);ctx.arc(size*.16,size*.08,size*.045,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle=`rgba(255,40,40,${light})`;ctx.lineWidth=Math.max(2,size*.018);
+   for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*size*.12,size*.16);ctx.lineTo(i*size*.20,size*.34);ctx.stroke()}
+  }else{
+   ctx.beginPath();ctx.ellipse(jitter,0,size*.25,size*.45,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#050000";ctx.beginPath();ctx.arc(-size*.08,-size*.1,size*.055,0,Math.PI*2);ctx.arc(size*.08,-size*.1,size*.055,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle=`rgba(255,40,40,${light})`;ctx.lineWidth=Math.max(2,size*.018);ctx.beginPath();ctx.arc(0,size*.05,size*.13,0,Math.PI);
+   ctx.stroke();
+   if(monsterType==="lurker"){
+    ctx.globalAlpha=.55;ctx.fillStyle="#111";ctx.fillRect(-size*.32,-size*.48,size*.64,size*.95);ctx.globalAlpha=1;
+   }
+  }
+  if(monsterType==="boss"){ctx.strokeStyle=`rgba(255,0,0,${light})`;ctx.lineWidth=Math.max(2,size*.025);for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*size*.2,Math.sin(a)*size*.2);ctx.lineTo(Math.cos(a)*size*.5,Math.sin(a)*size*.5);ctx.stroke()}}
+ }
+ if(kind==="item"){
+  ctx.fillStyle=color;ctx.shadowBlur=14;ctx.shadowColor=color;ctx.fillRect(-size*.13,-size*.13,size*.26,size*.26);ctx.shadowBlur=0;
+ }
+ if(kind==="exit"){
+  ctx.strokeStyle="#ddd";ctx.lineWidth=Math.max(2,size*.02);ctx.strokeRect(-size*.22,-size*.42,size*.44,size*.84);
+  ctx.fillStyle="#800";ctx.fillRect(-size*.13,-size*.32,size*.26,size*.64);
+ }
+ ctx.restore();
+}
+
+function drawFloorItems(){
+ for(const it of items||[]){
+   if(!it.active)continue;
+   const dx=it.x-player.x,dy=it.y-player.y;
+   const d=Math.hypot(dx,dy);
+   if(d>.3 && d<8){
+     let a=Math.atan2(dy,dx)-player.angle;
+     while(a>Math.PI)a-=Math.PI*2; while(a<-Math.PI)a+=Math.PI*2;
+     if(Math.abs(a)<.75){
+       const sx=W/2 + Math.tan(a)*W*.62;
+       const sy=H/2 + player.pitch;
+       const sz=Math.max(5,Math.min(22,150/d));
+       ctx.save();
+       ctx.globalAlpha=Math.max(.25,1-d/9);
+       if(it.type==="key"){ctx.fillStyle="#f4d35e";ctx.fillRect(sx-sz*.25,sy-sz*.35,sz*.5,sz*.7);}
+       else if(it.type==="stun"){ctx.fillStyle="#8fd3ff";ctx.fillRect(sx-sz*.3,sy-sz*.5,sz*.6,sz);}
+       else if(it.type==="lighter"){ctx.fillStyle="#e7e7e7";ctx.fillRect(sx-sz*.25,sy-sz*.35,sz*.5,sz*.7);ctx.fillStyle="#ffb000";ctx.fillRect(sx-sz*.1,sy-sz*.6,sz*.2,sz*.25);}
+       else {ctx.strokeStyle="#b58cff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(sx,sy,sz*.45,0,Math.PI*2);ctx.stroke();}
+       ctx.restore();
+     }
+   }
+ }
+}
+
+function render(){
+ ctx.imageSmoothingEnabled=false;
+
+ const W=canvas.width,H=canvas.height;
+ ctx.clearRect(0,0,W,H);
+
+ /*
+  Ceiling and floor gradients give the maze a more readable
+  3D look without expensive textures.
+ */
+ const sky=ctx.createLinearGradient(0,0,0,H/2);
+ sky.addColorStop(0,"#020202");
+ sky.addColorStop(1,"#111");
+
+ ctx.fillStyle=sky;
+ ctx.fillRect(0,0,W,H/2);
+
+ const floor=ctx.createLinearGradient(0,H/2,0,H);
+ floor.addColorStop(0,"#090909");
+ floor.addColorStop(1,"#010101");
+
+ ctx.fillStyle=floor;
+ ctx.fillRect(0,H/2,W,H/2);
+
+ if(!gameRunning)return;
+
+ const FOV=Math.PI/3;
+ const step=2;
+
+ depthBuffer=new Array(W).fill(18);
+
+ const horizon=H/2 + player.pitch;
+
+ for(let i=0;i<W;i+=step){
+  const a=player.angle-FOV/2+(i/W)*FOV;
+  const raw=castWall(a);
+  const dist=raw*Math.cos(angleDiff(a,player.angle));
+
+  depthBuffer[i]=dist;
+  if(i+1<W)depthBuffer[i+1]=dist;
+
+  const lit=visible(dist,a);
+
+  /*
+   Walls fade toward black with distance.
+  */
+  const shade=Math.floor(130*lit);
+  const wallHeight=Math.min(H*1.7,H/dist);
+  const top=horizon-wallHeight/2;
+
+  if(shade>1){
+   ctx.fillStyle=`rgb(${shade},${Math.floor(shade*.09)},${Math.floor(shade*.09)})`;
+   ctx.fillRect(i,top,step+1,wallHeight);
+  }
+
+  /*
+   Subtle vertical wall variation.
+  */
+  if(lit>.35 && ((i*13)%37)<2){
+   ctx.fillStyle=`rgba(180,0,0,${.05*lit})`;
+   ctx.fillRect(i,top,step+1,wallHeight);
+  }
+ }
+
+ const sprites=[];
+
+ for(const m of monsters)if(!m.hidden)sprites.push({e:m,kind:"monster"});
+ for(const it of items)sprites.push({e:it,kind:"item"});
+ if(exit)sprites.push({e:exit,kind:"exit"});
+ if(boss)sprites.push({e:boss,kind:"boss"});
+
+ sprites.sort((a,b)=>
+  Math.hypot(b.e.x-player.x,b.e.y-player.y)-
+  Math.hypot(a.e.x-player.x,a.e.y-player.y)
+ );
+
+ for(const s of sprites){
+  const ex=s.e.x-player.x;
+  const ey=s.e.y-player.y;
+  const dist=Math.hypot(ex,ey);
+  const sa=angleDiff(Math.atan2(ey,ex),player.angle);
+
+  if(dist<.2||dist>17||Math.abs(sa)>FOV*.7)continue;
+
+  const sx=W/2+Math.tan(sa)*(W/2);
+  const size=Math.min(
+   H*1.1,
+   H/dist*(s.kind==="boss"?1.5:1)
+  );
+
+  const light=visible(dist,Math.atan2(ey,ex));
+
+  let c=s.kind==="monster"?s.e.type:"#ddd";
+
+  if(s.kind==="item"){
+   c={
+    key:"#ddd",
+    medkit:"#b33",
+    battery:"#7af",
+    adrenaline:"#da3",
+    sigil:"#a5f"
+   }[s.e.kind]||"#ddd";
+  }
+
+  if(s.kind==="exit")c="#aaa";
+  if(s.kind==="boss")c="boss";
+
+  const center=Math.floor(sx);
+  const bufferIndex=Math.max(
+   0,
+   Math.min(W-1,center-(center%2))
+  );
+
+  const d=depthBuffer[bufferIndex]??18;
+
+  if(d>=dist-.1){
+   drawSprite(
+    sx,
+    horizon,
+    size,
+    light,
+    c,
+    s.kind==="item"
+     ?"item"
+     :s.kind==="exit"
+      ?"exit"
+      :"monster"
+   );
+  }
+ }
+
+ /*
+  Crosshair.
+ */
+ ctx.strokeStyle="rgba(255,255,255,.32)";
+ ctx.lineWidth=1;
+ ctx.beginPath();
+ ctx.moveTo(W/2-5,horizon);
+ ctx.lineTo(W/2+5,horizon);
+ ctx.moveTo(W/2,horizon-5);
+ ctx.lineTo(W/2,horizon+5);
+ ctx.stroke();
+
+ /*
+  Vignette.
+ */
+ const vignette=ctx.createRadialGradient(
+  W/2,horizon,H*.1,
+  W/2,horizon,H*.78
+ );
+ vignette.addColorStop(0,"rgba(0,0,0,0)");
+ vignette.addColorStop(1,"rgba(0,0,0,.78)");
+ ctx.fillStyle=vignette;
+ ctx.fillRect(0,0,W,H);
+
+ /*
+  Red damage pulse.
+ */
+ if(screenShake>0){
+  ctx.fillStyle=`rgba(180,0,0,${Math.min(.14,screenShake/70)})`;
+  ctx.fillRect(0,0,W,H);
+  screenShake=Math.max(0,screenShake-dtForRender());
+ }
+}
+
+let renderClock=0;
+function dtForRender(){
+ const now=performance.now();
+ const d=Math.min(.05,(now-renderClock)/1000||.016);
+ renderClock=now;
+ return d;
+}
+
+function loop(t){
+ const dt=Math.min(.05,(t-lastTime)/1000||.016);lastTime=t;
+ if(gameRunning)update(dt);render();renderClock=performance.now(); requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+addEventListener("keydown",e=>{
+ const k=e.key.length===1?e.key.toLowerCase():e.key;
+ if(k in keys)keys[k]=true;
+ if([" ","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d","W","A","S","D"].includes(k))e.preventDefault();
+ if(!gameRunning)return;
+ if(k==="Escape"){gameRunning=false;hud.classList.add("hidden");controls.classList.add("hidden");elevatorPanel.classList.add("hidden");bossWrap.style.display="none";mainMenu.classList.remove("hidden");return}
+ if(k.toLowerCase()==="e")useItem();
+ if(k.toLowerCase()==="q")heal();
+ if(k.toLowerCase()==="r")recharge();
+ if(k.toLowerCase()==="z")adrenaline();
+ if(k.toLowerCase()==="f")flashlight();
+ if(k===" "&&boss&&boss.active&&Math.hypot(player.x-boss.x,player.y-boss.y)<6){
+  if(player.battery>10){boss.health=Math.max(0,boss.health-10);player.battery-=10;showMessage("FLASH BURST!");tone(900,.18,"square",.1)}
+ }
+});
+addEventListener("keyup",e=>{if(e.key in keys)keys[e.key]=false});
+document.getElementById("settings-btn").onclick=()=>{mainMenu.classList.add("hidden");settingsMenu.classList.remove("hidden")};
+document.getElementById("settings-back").onclick=()=>{settingsMenu.classList.add("hidden");mainMenu.classList.remove("hidden")};
+document.getElementById("vhs-toggle").onclick=()=>{settings.vhs=!settings.vhs;applySettings()};
+document.getElementById("scare-toggle").onclick=()=>{settings.jumpscares=!settings.jumpscares;applySettings()};
+document.getElementById("aggression-toggle").onclick=()=>{settings.aggression=!settings.aggression;applySettings()};
+document.getElementById("flash-start-toggle").onclick=()=>{settings.flashlightStart=!settings.flashlightStart;applySettings()};
+
+document.getElementById("start-btn").onclick=()=>{
+ audioInit();mainMenu.classList.add("hidden");level=1;deathCount=0;
+ levelCard.classList.remove("hidden");document.getElementById("card-title").textContent="DEPTH 1";
+ document.getElementById("card-copy").textContent="Your first descent begins. The maze will change after every death.";
+ document.getElementById("card-monsters").textContent="6";document.getElementById("card-items").textContent="9";document.getElementById("card-size").textContent="25";document.getElementById("card-boss").textContent="NO";
+};
+document.getElementById("continue-btn").onclick=()=>{startLevel()};
+document.getElementById("retry-btn").onclick=()=>{
+ gameOver.classList.add("hidden");gameOver.style.display="none";levelCard.classList.remove("hidden");
+ document.getElementById("card-title").textContent="DEPTH "+level;
+ document.getElementById("card-copy").textContent="Death changed the blueprint. Nothing is where you remember it.";
+ document.getElementById("card-monsters").textContent=Math.min(16,5+level+Math.floor(level/2));
+ document.getElementById("card-items").textContent=Math.min(24,7+level*2);document.getElementById("card-size").textContent=MAP_SIZE;
+ document.getElementById("card-boss").textContent=level%3===0?"YES":"NO";
+};
+
+document.addEventListener("keydown",e=>{
+ if(e.repeat)return;
+ if(e.code==="KeyL" && gameRunning)useLighter();
+ if(e.code==="Space" && gameRunning && extraItems.stuns>0){e.preventDefault();useStun();}
+});
+</script>
+</body>
+</html>
